@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Ditchling Sun Tracker</title>
+<script async src="https://scripts.withcabin.com/hello.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'DM Mono', monospace;
+    text-transform: uppercase;
+    font-size: 12pt;
+    font-weight: 400;
+    line-height: 1.15;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    padding: clamp(1.5rem, 6vw, 4rem);
+    transition: background-color 0.8s ease, color 0.6s ease;
+    overflow-x: hidden;
+}
+
+body.weather-sun   { background: #ffffff; color: #1a1a1a; --muted: rgba(26,26,26,0.35); }
+body.weather-cloud { background: #ffffff; color: #1a1a1a; --muted: rgba(26,26,26,0.35); }
+body.weather-rain  { background: #ffffff; color: #1a1a1a; --muted: rgba(26,26,26,0.35); }
+body.weather-night { background: #ffffff; color: #1a1a1a; --muted: rgba(26,26,26,0.35); }
+
+.data-stack {
+    width: 100%;
+}
+
+/* Weather icon loader */
+.icon-loader, .icon-settled {
+    display: block;
+    width: 2em;
+    height: 2em;
+    margin-bottom: 0.3em;
+}
+
+.icon-loader svg, .icon-settled svg {
+    width: 100%;
+    height: 100%;
+    fill: currentColor;
+}
+
+/* Each character types in */
+.char {
+    display: inline;
+    opacity: 0;
+}
+.char.visible {
+    opacity: 1;
+}
+
+/* Line break between data lines */
+.line-break {
+    display: block;
+    height: 0.3em;
+}
+
+/* Footer */
+.footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    padding: 0 clamp(1.5rem, 6vw, 4rem) 1.5rem;
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--muted);
+    line-height: 1.7;
+    text-transform: uppercase;
+}
+.footer a { color: inherit; text-decoration: none; }
+
+.hidden-link {
+    position: fixed; top: 10px; right: 10px;
+    font-size: 10px; opacity: 0.15; cursor: pointer;
+    text-decoration: none; color: currentColor;
+    text-transform: uppercase;
+}
+.hidden-link:hover { opacity: 0.4; }
+</style>
+</head>
+<body class="weather-sun">
+<a href="#" class="hidden-link" id="adjustLink">Adjust shade</a>
+
+<div class="data-stack" id="dataStack"></div>
+
+<div class="footer">
+    The Bull Benches, Ditchling, East Sussex<br>
+    <a href="https://www.google.com/maps?q=50.921048,-0.114395" target="_blank">50.9210°N, 0.1144°W</a><br><br>
+    Built for fun. <a href="#" id="shareLink">Share pints</a><br>
+    Weather via <a href="https://open-meteo.com" target="_blank">Open-Meteo</a>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/suncalc/1.9.0/suncalc.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+const LAT = 50.921048, LNG = -0.114395;
+let SHADE_ALT = 18, SHADE_AZ = 220;
+
+const PINT_PHRASES = ["It's pint weather!", "Your round", "Benches"];
+
+const ICONS = {
+    sun: '<svg viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg"><path d="m637.5 75c0-20.719-16.781-37.5-37.5-37.5s-37.5 16.781-37.5 37.5v95.438c0 20.719 16.781 37.5 37.5 37.5s37.5-16.781 37.5-37.5z"/><path d="m255.28 202.26c-14.625-14.672-38.391-14.672-53.016 0-14.672 14.625-14.672 38.391 0 53.016l67.5 67.5c14.625 14.625 38.391 14.625 53.016 0 14.672-14.672 14.672-38.391 0-53.062z"/><path d="m997.74 255.28c14.672-14.625 14.672-38.391 0-53.016-14.625-14.672-38.391-14.672-53.016 0l-67.5 67.5c-14.625 14.625-14.625 38.391 0 53.016s38.391 14.625 53.016 0z"/><path d="m600 281.26c-176.06 0-318.74 142.69-318.74 318.74s142.69 318.74 318.74 318.74 318.74-142.69 318.74-318.74-142.69-318.74-318.74-318.74z"/><path d="m75 562.5c-20.719 0-37.5 16.781-37.5 37.5s16.781 37.5 37.5 37.5h95.438c20.719 0 37.5-16.781 37.5-37.5s-16.781-37.5-37.5-37.5z"/><path d="m1029.6 562.5c-20.719 0-37.5 16.781-37.5 37.5s16.781 37.5 37.5 37.5h95.438c20.719 0 37.5-16.781 37.5-37.5s-16.781-37.5-37.5-37.5z"/><path d="m930.28 877.22c-14.672-14.672-38.391-14.672-53.062 0-14.625 14.625-14.625 38.391 0 53.016l67.5 67.5c14.625 14.672 38.391 14.672 53.016 0 14.672-14.625 14.672-38.391 0-53.016z"/><path d="m322.78 930.24c14.625-14.625 14.625-38.391 0-53.016s-38.391-14.625-53.016 0l-67.5 67.5c-14.672 14.625-14.672 38.391 0 53.016 14.625 14.672 38.391 14.672 53.016 0z"/><path d="m637.5 1029.6c0-20.719-16.781-37.5-37.5-37.5s-37.5 16.781-37.5 37.5v95.438c0 20.719 16.781 37.5 37.5 37.5s37.5-16.781 37.5-37.5z"/></svg>',
+    cloudy: '<svg viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg"><path d="m525 187.5c-164.68 0-300.19 124.87-317.02 285.14-100.22 42.984-170.48 142.55-170.48 258.61 0 155.34 125.9 281.26 281.26 281.26h562.5c155.34 0 281.26-125.9 281.26-281.26 0-92.062-44.25-173.76-112.5-225 0-103.55-83.953-187.5-187.5-187.5-24.844 0-48.562 4.8281-70.312 13.641-56.812-87.188-155.26-144.89-267.19-144.89z"/></svg>',
+    rain: '<svg viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg"><path d="m209.48 310.74c22.078-154.5 154.92-273.24 315.52-273.24 111.94 0 210.37 57.703 267.19 144.89 21.75-8.8125 45.469-13.641 70.312-13.641 97.312 0 177.32 74.109 186.61 168.98 68.109 43.172 113.39 119.3 113.39 206.02 0 134.63-109.12 243.74-243.74 243.74h-637.5c-134.63 0-243.74-109.12-243.74-243.74 0-109.64 72.375-202.36 171.98-233.02z"/><path d="m559.45 849.98c17.297 11.438 22.031 34.688 10.594 51.938l-80.625 121.87c-11.438 17.297-34.734 22.031-51.984 10.594s-21.984-34.688-10.594-51.938l80.672-121.87c11.438-17.297 34.688-22.031 51.938-10.594z"/><path d="m976.92 849.98c17.297 11.438 22.031 34.688 10.594 51.938l-80.625 121.87c-11.438 17.297-34.734 22.031-51.984 10.594s-21.984-34.688-10.594-51.938l80.672-121.87c11.438-17.297 34.688-22.031 51.938-10.594z"/><path d="m361.31 901.97c11.438-17.297 6.7031-40.547-10.594-51.984-17.25-11.438-40.5-6.7031-51.938 10.594l-161.29 243.74c-11.438 17.25-6.7031 40.5 10.594 51.938 17.25 11.438 40.5 6.7031 51.938-10.594z"/><path d="m768.19 849.98c17.297 11.438 22.031 34.688 10.594 51.984l-161.29 243.71c-11.438 17.297-34.688 22.031-51.938 10.594-17.297-11.438-22.031-34.688-10.594-51.938l161.29-243.74c11.438-17.297 34.688-22.031 51.938-10.594z"/></svg>',
+    moon: '<svg viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg"><path d="m602.63 37.5c-311.9 0-565.13 251.68-565.13 562.5s253.22 562.5 565.13 562.5c284.76 0 520.5-209.63 559.5-482.63 2.25-15.891-5.8594-31.453-20.156-38.719-14.344-7.2656-31.688-4.5938-43.172 6.6094-64.688 63.234-153.28 102.23-251.16 102.23-198.05 0-358.26-159.66-358.26-356.26 0-118.41 58.078-223.36 147.66-288.24 13.031-9.4219 18.609-26.156 13.828-41.531s-18.844-25.969-34.969-26.344c-4.4062-0.09375-8.8125-0.14062-13.266-0.14062z"/></svg>',
+    pint: '<svg viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg"><path d="m895.2 122.28c-0.35938-16.32-13.68-29.281-30-29.281h-531.6c-16.441 0-29.762 13.199-30 29.641 0 1.0781-1.1992 110.52-1.1992 205.56 0 48.719 7.1992 81.48 14.16 113.28 6.6016 30.359 13.559 61.801 14.641 110.64 2.3984 102.72 32.398 509.88 33.719 527.16 1.1992 15.719 14.16 27.84 29.879 27.84h410.4c15.719 0 28.68-12.121 29.879-27.719 1.3203-17.281 32.52-423.36 33.719-527.52 0.60156-50.16 7.3203-80.281 14.52-112.2 6.9609-31.078 14.281-63.238 14.281-111.24 0-97.559-2.3984-204.84-2.3984-205.92z"/></svg>',
+    bench: '<svg viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg"><path d="m977.29 501.79h80.719v-235.22h-916.03v235.22z"/><path d="m222.71 641.81h-147.71v90.844h1050v-90.844z"/><path d="m949.5 770.16h96.469v163.26h-96.469z"/><path d="m156.79 770.16h96.469v163.26h-96.469z"/><path d="m241.45 539.29h717.1v64.969h-717.1z"/></svg>',
+    home: '<svg viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg"><path d="m168.94 480.89-55.031 35.062c-17.484 11.156-40.641 6-51.797-11.438-11.109-17.484-6-40.688 11.484-51.797l535.6-341.44c48.281-30.75 111.8-20.109 147.56 24.562l303.14 378.98c2.3906 2.2969 4.5 4.9219 6.1875 7.7344l88.219 110.25c12.938 16.172 10.312 39.797-5.8594 52.734-16.172 12.938-39.797 10.312-52.734-5.8594l-38.578-48.234-64.688 390.52 129.32-11.25c20.625-1.8281 38.812 13.453 40.594 34.078s-13.453 38.812-34.125 40.641l-230.72 20.109c-27.656 2.3906-56.156-1.2188-81.422-10.922l-343.87-131.72c-11.859-4.5469-26.156-6.9844-41.016-6.6094l-355.22 9.4219c-20.672 0.5625-37.922-15.797-38.484-36.516-0.51562-20.672 15.797-37.922 36.516-38.438l22.547-0.60937z" fill-rule="evenodd"/></svg>',
+    wine: '<svg viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg"><path d="m624 812.76v133.22h100.78c13.312 0 24 10.781 24 24s-10.688 24-24 24h-249.61c-13.312 0-24-10.781-24-24s10.688-24 24-24h100.78v-133.22c-86.297-6.6094-164.53-49.453-217.22-119.53-57.609-76.688-75.234-173.29-48.469-265.31l59.297-204.61c3-10.219 12.375-17.297 23.062-17.297h414.71c10.688 0 20.062 7.0781 23.062 17.297l59.297 204.61c26.766 92.062 9.1406 188.63-48.469 265.31-52.688 70.078-130.92 112.92-217.22 119.53z"/></svg>',
+    world: '<svg viewBox="0 0 1200 1200" xmlns="http://www.w3.org/2000/svg"><path d="m600 1162.5c-310.64 0-562.5-251.86-562.5-562.5s251.86-562.5 562.5-562.5 562.5 251.86 562.5 562.5-251.86 562.5-562.5 562.5zm212.86-1001.2c81.141 39.422 149.68 100.73 198 176.21h-111.61c-14.578-46.641-32.953-89.484-54.562-127.36-9.8438-17.156-20.438-33.516-31.828-48.844zm105.8 251.21h131.48c24.047 57.703 37.359 121.08 37.359 187.5s-13.312 129.79-37.359 187.5h-131.48c12.234-58.828 18.844-121.97 18.844-187.5s-6.6094-128.68-18.844-187.5zm-76.781 375c13.219-57.516 20.625-120.79 20.625-187.5s-7.4062-129.98-20.625-187.5h-483.74c-13.219 57.516-20.625 120.79-20.625 187.5s7.4062 129.98 20.625 187.5zm-462.14 75h440.53c-11.625 33-25.312 63.234-40.688 90.141-51.094 89.438-116.02 134.86-179.58 134.86s-128.48-45.422-179.58-134.86c-15.375-26.906-29.062-57.141-40.688-90.141zm-98.391-75c-12.234-58.828-18.844-121.97-18.844-187.5s6.6094-128.68 18.844-187.5h-131.48c-24.047 57.703-37.359 121.08-37.359 187.5s13.312 129.79 37.359 187.5zm-92.203 75h111.61c14.578 46.641 32.953 89.484 54.562 127.36 9.8438 17.156 20.438 33.516 31.828 48.844-81.141-39.422-149.68-100.73-198-176.21zm710.11 0h111.61c-48.328 75.469-116.86 136.78-198 176.21 11.391-15.328 21.984-31.688 31.828-48.844 21.609-37.875 39.984-80.719 54.562-127.36zm-119.67-615.14c15.375 26.906 29.062 57.141 40.688 90.141h-440.53c11.625-33 25.312-63.234 40.688-90.141 51.094-89.438 116.02-134.86 179.58-134.86s128.48 45.422 179.58 134.86zm-424.26-37.219c-21.609 37.875-39.984 80.719-54.562 127.36h-111.61c48.328-75.469 116.86-136.78 198-176.21-11.391 15.328-21.984 31.688-31.828 48.844z" fill-rule="evenodd"/></svg>'
+};
+
+const ICON_ORDER = ['sun', 'cloudy', 'rain', 'moon', 'pint', 'bench', 'home', 'wine', 'world'];
+
+function getIconKey(code, isDay) {
+    if (!isDay) return 'moon';
+    if ([51,53,55,61,63,65,80,81,82,95,96,99].includes(code)) return 'rain';
+    if ([2,3,45,48].includes(code)) return 'cloudy';
+    return 'sun';
+}
+const pintPhrase = PINT_PHRASES[Math.floor(Math.random() * PINT_PHRASES.length)];
+
+function fmt12(d) {
+    let h = d.getHours();
+    const m = d.getMinutes().toString().padStart(2, '0');
+    const ap = h >= 12 ? 'pm' : 'am';
+    h = h % 12 || 12;
+    return `${h}.${m}${ap}`;
+}
+
+function weatherDesc(code) {
+    const d = {
+        0: 'Clear sky', 1: 'Mainly clear', 2: 'Partly cloudy', 3: 'Overcast',
+        45: 'Fog', 48: 'Freezing fog',
+        51: 'Light drizzle', 53: 'Drizzle', 55: 'Heavy drizzle',
+        61: 'Light rain', 63: 'Rain', 65: 'Heavy rain',
+        71: 'Light snow', 73: 'Snow', 75: 'Heavy snow',
+        80: 'Light showers', 81: 'Showers', 82: 'Heavy showers',
+        95: 'Thunderstorm', 96: 'Thunderstorm with hail', 99: 'Severe thunderstorm'
+    };
+    return d[code] || 'Fair';
+}
+
+function getBackgroundClass(code, isDay) {
+    if (!isDay) return 'weather-night';
+    if ([51,53,55,61,63,65,80,81,82,95,96,99].includes(code)) return 'weather-rain';
+    if ([2,3,45,48].includes(code)) return 'weather-cloud';
+    return 'weather-sun';
+}
+
+function isBenchInSun(date) {
+    const pos = SunCalc.getPosition(date, LAT, LNG);
+    const alt = pos.altitude * 180 / Math.PI;
+    const az = (pos.azimuth * 180 / Math.PI + 180) % 360;
+    if (alt <= 0) return false;
+    if (az >= SHADE_AZ && alt < SHADE_ALT) return false;
+    return true;
+}
+
+function getShadeTime(day) {
+    const times = SunCalc.getTimes(day, LAT, LNG);
+    let t = new Date(times.solarNoon);
+    while (t < times.sunset) {
+        const pos = SunCalc.getPosition(t, LAT, LNG);
+        const alt = pos.altitude * 180 / Math.PI;
+        const az = (pos.azimuth * 180 / Math.PI + 180) % 360;
+        if (az >= SHADE_AZ && alt < SHADE_ALT && alt > 0) return new Date(t);
+        t = new Date(t.getTime() + 60000);
+    }
+    return times.sunset;
+}
+
+function getPints() {
+    const now = new Date();
+    if (!isBenchInSun(now)) return 0;
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+    const shade = getShadeTime(today);
+    return Math.floor(Math.max(0, (shade - now) / 60000) / 30);
+}
+
+function findSunWindows(hourlyTimes, hourlyCodes) {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+    const shadeTime = getShadeTime(today);
+    const windows = [];
+    let ws = null, wm = 0;
+    let t = new Date(today); t.setHours(12, 0, 0, 0);
+    while (t < shadeTime) {
+        let ni = 0, nd = Infinity;
+        for (let i = 0; i < hourlyTimes.length; i++) {
+            const d = Math.abs(new Date(hourlyTimes[i]) - t);
+            if (d < nd) { nd = d; ni = i; }
+        }
+        if ([0, 1].includes(hourlyCodes[ni]) && isBenchInSun(t)) {
+            if (!ws) ws = new Date(t);
+            wm += 30;
+        } else {
+            if (ws && wm >= 30) windows.push({ start: ws, mins: wm });
+            ws = null; wm = 0;
+        }
+        t = new Date(t.getTime() + 30 * 60000);
+    }
+    if (ws && wm >= 30) windows.push({ start: ws, mins: wm });
+    return windows;
+}
+
+// ─── ICON CYCLING + TYPEWRITER ───
+function animateDisplay(finalIconKey, lines) {
+    const stack = document.getElementById('dataStack');
+    stack.innerHTML = '';
+
+    // Create the icon element
+    const iconEl = document.createElement('span');
+    iconEl.className = 'icon-loader';
+    stack.appendChild(iconEl);
+
+    // Cycle through all icons twice at 0.2s each
+    const fullCycle = [...ICON_ORDER, ...ICON_ORDER];
+    let cycleIdx = 0;
+    iconEl.innerHTML = ICONS[fullCycle[0]];
+
+    const cycleInterval = setInterval(() => {
+        cycleIdx++;
+        if (cycleIdx >= fullCycle.length) {
+            clearInterval(cycleInterval);
+            iconEl.innerHTML = ICONS[finalIconKey];
+            iconEl.className = 'icon-settled';
+            startTyping(stack, lines);
+            return;
+        }
+        iconEl.innerHTML = ICONS[fullCycle[cycleIdx]];
+    }, 100);
+}
+
+function startTyping(stack, lines) {
+    // Build all characters as hidden spans
+    const allChars = [];
+
+    // 2 line breaks after the icon
+    for (let b = 0; b < 2; b++) {
+        const gap = document.createElement('span');
+        gap.className = 'line-break';
+        gap.style.opacity = '1';
+        stack.appendChild(gap);
+    }
+
+    lines.forEach((text, lineIdx) => {
+        // Line break before every line
+        const br = document.createElement('span');
+        br.className = 'line-break';
+        br.style.opacity = '0';
+        stack.appendChild(br);
+        allChars.push({ el: br, isBr: true });
+
+        if (text === '') {
+            // Empty line = extra gap
+            const gap = document.createElement('span');
+            gap.className = 'line-break';
+            gap.style.opacity = '0';
+            stack.appendChild(gap);
+            allChars.push({ el: gap, isBr: true });
+            return;
+        }
+        for (let i = 0; i < text.length; i++) {
+            const span = document.createElement('span');
+            span.className = 'char';
+            span.textContent = text[i];
+            stack.appendChild(span);
+            allChars.push({ el: span, isBr: false });
+        }
+    });
+
+    // Type characters in
+    let idx = 0;
+    const speed = 35;
+
+    const interval = setInterval(() => {
+        if (idx >= allChars.length) {
+            clearInterval(interval);
+            return;
+        }
+        const item = allChars[idx];
+        if (item.isBr) {
+            item.el.style.opacity = '1';
+        } else {
+            item.el.classList.add('visible');
+        }
+        idx++;
+    }, speed);
+}
+
+// ─── MAIN ───
+async function updateDisplay() {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
+    const times = SunCalc.getTimes(today, LAT, LNG);
+    const shadeTime = getShadeTime(today);
+    const isNight = now > times.sunset || now < times.sunrise;
+
+    let temp = null, code = 0;
+    let hourlyTimes = null, hourlyCodes = null;
+
+    try {
+        const resp = await fetch(
+            `https://api.open-meteo.com/v1/forecast?latitude=${LAT}&longitude=${LNG}&current=temperature_2m,weather_code,is_day&hourly=weather_code&timezone=Europe%2FLondon&forecast_days=1&models=ukmo_seamless`
+        );
+        const data = await resp.json();
+        temp = Math.round(data.current.temperature_2m);
+        code = data.current.weather_code;
+        hourlyCodes = data.hourly.weather_code;
+        hourlyTimes = data.hourly.time;
+    } catch (e) { console.error('Fetch failed:', e); }
+
+    document.body.className = getBackgroundClass(code, isNight ? 0 : 1);
+
+    // Build lines
+    const lines = [];
+
+    if (temp !== null) lines.push(`${temp}°C`);
+    lines.push(weatherDesc(code));
+
+    if (isNight) {
+        lines.push(`Sunset was ${fmt12(times.sunset)}`);
+        lines.push('');
+        lines.push('');
+        lines.push('The sun has set, we hope for sun tomorrow');
+    } else {
+        let futureWindows = [], totalPints = 0;
+        if (hourlyTimes && hourlyCodes) {
+            const sw = findSunWindows(hourlyTimes, hourlyCodes);
+            futureWindows = sw.filter(w => new Date(w.start.getTime() + w.mins * 60000) > now);
+            let tm = 0;
+            futureWindows.forEach(w => {
+                const s = w.start > now ? w.start : now;
+                tm += Math.max(0, (new Date(w.start.getTime() + w.mins * 60000) - s) / 60000);
+            });
+            totalPints = Math.floor(tm / 30);
+        } else if (isBenchInSun(now)) {
+            totalPints = getPints();
+        }
+
+        if (isBenchInSun(now) && totalPints > 0) {
+            lines.push('');
+            lines.push('');
+            lines.push(`Bench sun until ${fmt12(shadeTime)}`);
+            lines.push(`Sunset ${fmt12(times.sunset)}`);
+            lines.push('');
+            lines.push('');
+            lines.push(pintPhrase);
+            lines.push(`${totalPints} pint window`);
+        } else if (totalPints > 0) {
+            lines.push('');
+            lines.push('');
+            const next = futureWindows.find(w => w.start > now);
+            if (next) lines.push(`Sun expected at ${fmt12(next.start)}`);
+            lines.push(`Sunset ${fmt12(times.sunset)}`);
+            lines.push('');
+            lines.push('');
+            lines.push(totalPints >= 3 ? pintPhrase : 'Slim chance of pints today');
+            if (next) lines.push(`${Math.floor(next.mins / 30)} pint window`);
+        } else {
+            lines.push('');
+            lines.push('');
+            lines.push(`Sunset ${fmt12(times.sunset)}`);
+            lines.push('');
+            lines.push('');
+            lines.push("No chance of pints in the sun today");
+        }
+    }
+
+    const finalIcon = getIconKey(code, isNight ? 0 : 1);
+    animateDisplay(finalIcon, lines);
+}
+
+// ─── INIT ───
+const params = new URLSearchParams(window.location.search);
+if (params.has('shade_alt')) SHADE_ALT = parseFloat(params.get('shade_alt'));
+if (params.has('shade_az')) SHADE_AZ = parseFloat(params.get('shade_az'));
+
+updateDisplay();
+setInterval(updateDisplay, 5 * 60 * 1000);
+
+// ─── CALIBRATE ───
+document.getElementById('adjustLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    const a = prompt('Shade altitude (current: ' + SHADE_ALT + '):', SHADE_ALT);
+    if (a !== null && a !== '') SHADE_ALT = parseFloat(a);
+    const z = prompt('Shade azimuth (current: ' + SHADE_AZ + '):', SHADE_AZ);
+    if (z !== null && z !== '') SHADE_AZ = parseFloat(z);
+    const p = new URLSearchParams(window.location.search);
+    p.set('shade_alt', SHADE_ALT); p.set('shade_az', SHADE_AZ);
+    window.history.replaceState({}, '', '?' + p.toString());
+    updateDisplay();
+});
+
+// ─── SHARE ───
+document.getElementById('shareLink').addEventListener('click', async (e) => {
+    e.preventDefault();
+    const link = e.target;
+    const orig = link.textContent;
+    link.textContent = 'Creating...';
+    try {
+        const stack = document.querySelector('.data-stack');
+        const bg = getComputedStyle(document.body).backgroundColor;
+        const wrapper = document.createElement('div');
+        wrapper.style.cssText = `position:fixed;top:-9999px;left:-9999px;padding:75px;background:${bg};display:inline-block;font-family:'DM Mono',monospace;text-transform:uppercase;font-size:50px;font-weight:400;line-height:1.15;color:${getComputedStyle(document.body).color};`;
+        const clone = stack.cloneNode(true);
+        clone.querySelectorAll('.char').forEach(c => c.classList.add('visible'));
+        clone.querySelectorAll('.line-break').forEach(b => b.style.opacity = '1');
+        clone.querySelectorAll('.cursor').forEach(c => c.remove());
+        wrapper.appendChild(clone);
+        document.body.appendChild(wrapper);
+        const canvas = await html2canvas(wrapper, { backgroundColor: bg, scale: 2, useCORS: true, logging: false });
+        document.body.removeChild(wrapper);
+        const a = document.createElement('a');
+        a.download = 'ditchling-pints.png'; a.href = canvas.toDataURL('image/png'); a.click();
+    } catch (err) { console.error('Share failed:', err); }
+    link.textContent = orig;
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Work Out of Work</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #fff;
+            color: #000;
+            font-family: 'DM Mono', monospace;
+            font-size: 16pt;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .text {
+            transition: opacity 0.4s ease;
+            user-select: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="text">JUST FOR FUN</div>
+
+    <script>
+        const text = document.querySelector('.text');
+        const outerThreshold = 250;
+        const innerThreshold = 50;
+
+        document.addEventListener('mousemove', (e) => {
+            const rect = text.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            const dx = e.clientX - centerX;
+            const dy = e.clientY - centerY;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+
+            if (distance <= innerThreshold) {
+                text.style.opacity = 0;
+            } else if (distance < outerThreshold) {
+                const opacity = (distance - innerThreshold) / (outerThreshold - innerThreshold);
+                text.style.opacity = opacity;
+            } else {
+                text.style.opacity = 1;
+            }
+        });
+
+        document.addEventListener('mouseleave', () => {
+            text.style.opacity = 1;
+        });
+    </script>
+</body>
+</html>

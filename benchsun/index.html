@@ -22,7 +22,7 @@ body {
     text-transform: uppercase;
     font-size: 12pt;
     font-weight: 400;
-    line-height: 1.15;
+    line-height: 2;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
@@ -61,6 +61,10 @@ body.weather-night { background: #ffffff; color: #1a1a1a; --muted: rgba(26,26,26
     display: inline;
     opacity: 0;
 }
+.super {
+    vertical-align: super;
+    font-size: 0.6em;
+}
 .char.visible {
     opacity: 1;
 }
@@ -68,7 +72,7 @@ body.weather-night { background: #ffffff; color: #1a1a1a; --muted: rgba(26,26,26
 /* Line break between data lines */
 .line-break {
     display: block;
-    height: 0.3em;
+    height: 0;
 }
 
 /* Footer */
@@ -101,6 +105,7 @@ body.weather-night { background: #ffffff; color: #1a1a1a; --muted: rgba(26,26,26
 <div class="data-stack" id="dataStack"></div>
 
 <div class="footer">
+    <span class="super">*</span>Sunshine not guaranteed, terms and conditions apply<br><br>
     The Bull Benches, Ditchling, East Sussex<br>
     <a href="https://www.google.com/maps?q=50.921048,-0.114395" target="_blank">50.9210°N, 0.1144°W</a><br><br>
     Built for fun. <a href="#" id="shareLink">Share pints</a><br>
@@ -111,7 +116,7 @@ body.weather-night { background: #ffffff; color: #1a1a1a; --muted: rgba(26,26,26
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 const LAT = 50.921048, LNG = -0.114395;
-let SHADE_ALT = 18, SHADE_AZ = 220;
+let SHADE_ALT = 12, SHADE_AZ = 276;
 
 const PINT_PHRASES = ["It's pint weather!", "Your round", "Benches"];
 
@@ -280,7 +285,7 @@ function startTyping(stack, lines) {
         }
         for (let i = 0; i < text.length; i++) {
             const span = document.createElement('span');
-            span.className = 'char';
+            span.className = text[i] === '*' ? 'char super' : 'char';
             span.textContent = text[i];
             stack.appendChild(span);
             allChars.push({ el: span, isBr: false });
@@ -336,11 +341,15 @@ async function updateDisplay() {
     if (temp !== null) lines.push(`${temp}°C`);
     lines.push(weatherDesc(code));
 
+    // Bench sunset and sunset always included
+    lines.push('');
+    lines.push('');
     if (isNight) {
+        lines.push(`Bench sunset was ${fmt12(shadeTime)}*`);
         lines.push(`Sunset was ${fmt12(times.sunset)}`);
         lines.push('');
         lines.push('');
-        lines.push('The sun has set, we hope for sun tomorrow');
+        lines.push('The sun has set, we hope for sun (and pints) tomorrow');
     } else {
         let futureWindows = [], totalPints = 0;
         if (hourlyTimes && hourlyCodes) {
@@ -356,29 +365,51 @@ async function updateDisplay() {
             totalPints = getPints();
         }
 
-        if (isBenchInSun(now) && totalPints > 0) {
+        lines.push(`Bench sunset ${fmt12(shadeTime)}*`);
+        lines.push(`Sunset ${fmt12(times.sunset)}`);
+
+        const isMorning = now.getHours() < 12;
+
+        if (isMorning) {
+            // Before midday: assess afternoon forecast
             lines.push('');
             lines.push('');
-            lines.push(`Bench sun until ${fmt12(shadeTime)}`);
-            lines.push(`Sunset ${fmt12(times.sunset)}`);
+            if (hourlyTimes && hourlyCodes) {
+                // Count afternoon hours (12pm to shade time) by weather type
+                const RAIN_CODES = [51,53,55,61,63,65,80,81,82,95,96,99];
+                const SUN_CODES = [0, 1];
+                let afternoonHours = 0, rainHours = 0, sunHours = 0;
+                for (let i = 0; i < hourlyTimes.length; i++) {
+                    const h = new Date(hourlyTimes[i]);
+                    if (h.getHours() >= 12 && h < shadeTime) {
+                        afternoonHours++;
+                        if (RAIN_CODES.includes(hourlyCodes[i])) rainHours++;
+                        if (SUN_CODES.includes(hourlyCodes[i])) sunHours++;
+                    }
+                }
+                const rainPct = afternoonHours > 0 ? rainHours / afternoonHours : 0;
+                if (rainPct >= 0.95) {
+                    lines.push('Pints in the sun not open until after midday, but you can forget pints in the sun today');
+                } else if (sunHours > 0) {
+                    lines.push('Pints in the sun not open until after midday, but it\'s looking good for later');
+                } else {
+                    lines.push('Pints in the sun not open until after midday, but it\'s not looking good');
+                }
+            } else {
+                lines.push('Pints in the sun not open until after midday');
+            }
+        } else if (isBenchInSun(now) && totalPints > 0) {
             lines.push('');
             lines.push('');
             lines.push(pintPhrase);
             lines.push(`${totalPints} pint window`);
         } else if (totalPints > 0) {
-            lines.push('');
-            lines.push('');
             const next = futureWindows.find(w => w.start > now);
-            if (next) lines.push(`Sun expected at ${fmt12(next.start)}`);
-            lines.push(`Sunset ${fmt12(times.sunset)}`);
             lines.push('');
             lines.push('');
             lines.push(totalPints >= 3 ? pintPhrase : 'Slim chance of pints today');
             if (next) lines.push(`${Math.floor(next.mins / 30)} pint window`);
         } else {
-            lines.push('');
-            lines.push('');
-            lines.push(`Sunset ${fmt12(times.sunset)}`);
             lines.push('');
             lines.push('');
             lines.push("No chance of pints in the sun today");

@@ -105,10 +105,10 @@ body.weather-night { background: #ffffff; color: #1a1a1a; --muted: rgba(26,26,26
 <div class="data-stack" id="dataStack"></div>
 
 <div class="footer">
-    <span class="super">*</span>Sunshine not guaranteed, terms and conditions apply<br><br>
+    <span class="super">*</span>Sunshine not guaranteed,<br>terms and conditions apply<br><br>
     The Bull Benches, Ditchling, East Sussex<br>
     <a href="https://www.google.com/maps?q=50.921048,-0.114395" target="_blank">50.9210°N, 0.1144°W</a><br><br>
-    Built for fun. <a href="#" id="shareLink">Share pints</a><br>
+    Built for fun.<br>
     Weather via <a href="https://open-meteo.com" target="_blank">Open-Meteo</a>
 </div>
 
@@ -441,30 +441,7 @@ document.getElementById('adjustLink').addEventListener('click', (e) => {
     updateDisplay();
 });
 
-// ─── SHARE ───
-document.getElementById('shareLink').addEventListener('click', async (e) => {
-    e.preventDefault();
-    const link = e.target;
-    const orig = link.textContent;
-    link.textContent = 'Creating...';
-    try {
-        const stack = document.querySelector('.data-stack');
-        const bg = getComputedStyle(document.body).backgroundColor;
-        const wrapper = document.createElement('div');
-        wrapper.style.cssText = `position:fixed;top:-9999px;left:-9999px;padding:75px;background:${bg};display:inline-block;font-family:'DM Mono',monospace;text-transform:uppercase;font-size:50px;font-weight:400;line-height:1.15;color:${getComputedStyle(document.body).color};`;
-        const clone = stack.cloneNode(true);
-        clone.querySelectorAll('.char').forEach(c => c.classList.add('visible'));
-        clone.querySelectorAll('.line-break').forEach(b => b.style.opacity = '1');
-        clone.querySelectorAll('.cursor').forEach(c => c.remove());
-        wrapper.appendChild(clone);
-        document.body.appendChild(wrapper);
-        const canvas = await html2canvas(wrapper, { backgroundColor: bg, scale: 2, useCORS: true, logging: false });
-        document.body.removeChild(wrapper);
-        const a = document.createElement('a');
-        a.download = 'ditchling-pints.png'; a.href = canvas.toDataURL('image/png'); a.click();
-    } catch (err) { console.error('Share failed:', err); }
-    link.textContent = orig;
-});
+
 </script>
 </body>
 </html>

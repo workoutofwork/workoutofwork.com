@@ -228,7 +228,11 @@ function findSunWindows(hourlyTimes, hourlyCodes) {
 }
 
 // ─── ICON CYCLING + TYPEWRITER ───
+let _activeAnimTimers = [];
 function animateDisplay(finalIconKey, lines) {
+    // Kill any in-progress animation timers
+    _activeAnimTimers.forEach(id => clearInterval(id));
+    _activeAnimTimers = [];
     const stack = document.getElementById('dataStack');
     stack.innerHTML = '';
 
@@ -253,6 +257,7 @@ function animateDisplay(finalIconKey, lines) {
         }
         iconEl.innerHTML = ICONS[fullCycle[cycleIdx]];
     }, 100);
+    _activeAnimTimers.push(cycleInterval);
 }
 
 function startTyping(stack, lines) {
@@ -310,6 +315,7 @@ function startTyping(stack, lines) {
         }
         idx++;
     }, speed);
+    _activeAnimTimers.push(interval);
 }
 
 // ─── MAIN ───

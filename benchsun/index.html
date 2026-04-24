@@ -119,7 +119,7 @@ body.weather-night { background: #ffffff; color: #1a1a1a; --muted: rgba(26,26,26
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script>
 const LAT = 50.921048, LNG = -0.114395;
-let SHADE_ALT = 12, SHADE_AZ = 276;
+let SHADE_ALT = 11, SHADE_AZ = 270;
 
 const PINT_PHRASES = ["It's pint weather!", "Your round", "Benches"];
 
@@ -414,13 +414,13 @@ async function updateDisplay() {
             lines.push('');
             lines.push('');
             lines.push(pintPhrase);
-            lines.push(`${totalPints} pint window`);
+            lines.push(`${totalPints} pint window in the sun`);
         } else if (totalPints > 0) {
             const next = futureWindows.find(w => w.start > now);
             lines.push('');
             lines.push('');
             lines.push(totalPints >= 3 ? pintPhrase : 'Slim chance of pints today');
-            if (next) lines.push(`${Math.floor(next.mins / 30)} pint window`);
+            if (next) lines.push(`${Math.floor(next.mins / 30)} pint window in the sun`);
         } else {
             lines.push('');
             lines.push('');

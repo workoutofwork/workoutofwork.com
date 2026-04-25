@@ -92,17 +92,9 @@ body.weather-night { background: #ffffff; color: #1a1a1a; --muted: rgba(26,26,26
 }
 .footer a { color: inherit; text-decoration: none; }
 
-.hidden-link {
-    position: fixed; top: 10px; right: 10px;
-    font-size: 10px; opacity: 0.15; cursor: pointer;
-    text-decoration: none; color: currentColor;
-    text-transform: uppercase;
-}
-.hidden-link:hover { opacity: 0.4; }
 </style>
 </head>
 <body class="weather-sun">
-<a href="#" class="hidden-link" id="adjustLink">Adjust shade</a>
 
 <div class="data-stack" id="dataStack"></div>
 
@@ -200,7 +192,7 @@ function getPints() {
     if (!isBenchInSun(now)) return 0;
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 12, 0, 0);
     const shade = getShadeTime(today);
-    return Math.floor(Math.max(0, (shade - now) / 60000) / 30);
+    return Math.floor(Math.max(0, (shade - now) / 60000) / 20);
 }
 
 function findSunWindows(hourlyTimes, hourlyCodes) {
@@ -218,14 +210,14 @@ function findSunWindows(hourlyTimes, hourlyCodes) {
         }
         if ([0, 1].includes(hourlyCodes[ni]) && isBenchInSun(t)) {
             if (!ws) ws = new Date(t);
-            wm += 30;
+            wm += 20;
         } else {
-            if (ws && wm >= 30) windows.push({ start: ws, mins: wm });
+            if (ws && wm >= 20) windows.push({ start: ws, mins: wm });
             ws = null; wm = 0;
         }
-        t = new Date(t.getTime() + 30 * 60000);
+        t = new Date(t.getTime() + 20 * 60000);
     }
-    if (ws && wm >= 30) windows.push({ start: ws, mins: wm });
+    if (ws && wm >= 20) windows.push({ start: ws, mins: wm });
     return windows;
 }
 
@@ -372,7 +364,7 @@ async function updateDisplay() {
                 const s = w.start > now ? w.start : now;
                 tm += Math.max(0, (new Date(w.start.getTime() + w.mins * 60000) - s) / 60000);
             });
-            totalPints = Math.floor(tm / 30);
+            totalPints = Math.floor(tm / 20);
         } else if (isBenchInSun(now)) {
             totalPints = getPints();
         }
@@ -401,14 +393,14 @@ async function updateDisplay() {
                 }
                 const rainPct = afternoonHours > 0 ? rainHours / afternoonHours : 0;
                 if (rainPct >= 0.95) {
-                    lines.push('Pints in the sun not open until after midday, but you can forget pints in the sun today');
+                    lines.push('Pints in the sun not operational until after midday, but you can forget pints in the sun today');
                 } else if (sunHours > 0) {
-                    lines.push('Pints in the sun not open until after midday, but it\'s looking good for later');
+                    lines.push('Pints in the sun not operational until after midday, but it\'s looking good for later');
                 } else {
-                    lines.push('Pints in the sun not open until after midday, but it\'s not looking good');
+                    lines.push('Pints in the sun not operational until after midday, but it\'s not looking good');
                 }
             } else {
-                lines.push('Pints in the sun not open until after midday');
+                lines.push('Pints in the sun not operational until after midday');
             }
         } else if (isBenchInSun(now) && totalPints > 0) {
             lines.push('');
@@ -420,7 +412,7 @@ async function updateDisplay() {
             lines.push('');
             lines.push('');
             lines.push(totalPints >= 3 ? pintPhrase : 'Slim chance of pints today');
-            if (next) lines.push(`${Math.floor(next.mins / 30)} pint window in the sun`);
+            if (next) lines.push(`${Math.floor(next.mins / 20)} pint window in the sun`);
         } else {
             lines.push('');
             lines.push('');
@@ -441,18 +433,6 @@ if (params.has('shade_az')) SHADE_AZ = parseFloat(params.get('shade_az'));
 updateDisplay();
 setInterval(updateDisplay, 5 * 60 * 1000);
 
-// ─── CALIBRATE ───
-document.getElementById('adjustLink').addEventListener('click', (e) => {
-    e.preventDefault();
-    const a = prompt('Shade altitude (current: ' + SHADE_ALT + '):', SHADE_ALT);
-    if (a !== null && a !== '') SHADE_ALT = parseFloat(a);
-    const z = prompt('Shade azimuth (current: ' + SHADE_AZ + '):', SHADE_AZ);
-    if (z !== null && z !== '') SHADE_AZ = parseFloat(z);
-    const p = new URLSearchParams(window.location.search);
-    p.set('shade_alt', SHADE_ALT); p.set('shade_az', SHADE_AZ);
-    window.history.replaceState({}, '', '?' + p.toString());
-    updateDisplay();
-});
 
 
 </script>

@@ -265,7 +265,9 @@ tr.worst td{background:var(--orange-wash)}
       <p class="note">Pairs who turned out on the same night but on <em>opposite</em>
       sides, ranked by how often. Only pairs work here: three players can&rsquo;t all be
       on different teams when there are only two. W&ndash;D&ndash;L is from the
-      first-named player&rsquo;s point of view.</p>
+      first-named player&rsquo;s point of view. <b>Together</b> is how many times the
+      same two were team-mates instead &mdash; a zero there means they have never once
+      been on the same side.</p>
     </details>
   </section>
 
@@ -617,20 +619,25 @@ const nameCell = c => c.names.join(' <i>&middot;</i> ');
       map.set(x + '|' + y, e);
     }));
   });
+  // how often the same two were team-mates, for contrast
+  const withEachOther = new Map(
+    sameTeam(2).map(c => [c.names.join('|'), c.g]));
   const rows = [...map.values()]
     .sort((p, q) => q.g - p.g || bySurname(p.a, q.a) || bySurname(p.b, q.b))
-    .slice(0, 8);
+    .slice(0, 8)
+    .map(r => ({ ...r, together: withEachOther.get(r.a + '|' + r.b) || 0 }));
   if (!rows.length) {
     el.outerHTML = '<p class="empty">No results recorded yet.</p>'; return;
   }
   el.innerHTML = `<thead><tr><th style="text-align:left">Pair</th><th>Against</th>
-    <th>W</th><th>D</th><th>L</th></tr></thead><tbody>` +
+    <th>W</th><th>D</th><th>L</th><th>Together</th></tr></thead><tbody>` +
     rows.map(r => `<tr>
       <td style="text-align:left">${r.a} <i class="vs">v</i> ${r.b}</td>
       <td class="pts">${r.g}</td>
       <td class="${r.w ? '' : 'dim'}">${r.w}</td>
       <td class="${r.d ? '' : 'dim'}">${r.d}</td>
-      <td class="${r.g - r.w - r.d ? '' : 'dim'}">${r.g - r.w - r.d}</td></tr>`).join('') +
+      <td class="${r.g - r.w - r.d ? '' : 'dim'}">${r.g - r.w - r.d}</td>
+      <td class="${r.together ? '' : 'dim'}">${r.together}</td></tr>`).join('') +
     '</tbody>';
 })();
 

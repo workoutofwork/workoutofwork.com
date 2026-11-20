@@ -271,6 +271,14 @@ tr.worst td{background:var(--orange-wash)}
     </details>
   </section>
 
+  <section data-view="season">
+    <h2>Captain&rsquo;s pick</h2>
+    <div class="scroll"><table id="captpick"></table></div>
+    <details class="method"><summary>How this is calculated</summary>
+      <p class="note" id="captpicknote"></p>
+    </details>
+  </section>
+
   <section data-view="all">
     <h2>Career appearances</h2>
     <div class="scroll" id="apps"></div>
@@ -639,6 +647,52 @@ const nameCell = c => c.names.join(' <i>&middot;</i> ');
       <td class="${r.g - r.w - r.d ? '' : 'dim'}">${r.g - r.w - r.d}</td>
       <td class="${r.together ? '' : 'dim'}">${r.together}</td></tr>`).join('') +
     '</tbody>';
+})();
+
+/* ---- captain's pick ---- */
+(function () {
+  const el = document.getElementById('captpick');
+  const note = document.getElementById('captpicknote');
+  // only games where a picker is recorded AND the picker played: a captain who
+  // sat out had no side of their own to pick anyone onto.
+  const games = MCUR.filter(m => m.picked_by &&
+    lineup(m).includes(m.picked_by));
+  const tally = new Map();
+  games.forEach(m => {
+    const cap = m.picked_by;
+    const side = m.teams.whites.includes(cap) ? m.teams.whites : m.teams.oranges;
+    lineup(m).forEach(pl => {
+      if (pl === cap) return;            // a captain always picks himself
+      const e = tally.get(pl) || { name: pl, g: 0, with: 0 };
+      e.g++;
+      if (side.includes(pl)) e.with++;
+      tally.set(pl, e);
+    });
+  });
+  const rows = [...tally.values()]
+    .sort((a, b) => b.with - a.with || b.with / b.g - a.with / a.g
+      || bySurname(a.name, b.name))
+    .slice(0, 5);
+  if (!rows.length) {
+    el.outerHTML = '<p class="empty">No teams recorded yet.</p>';
+    note.textContent = '';
+    return;
+  }
+  el.innerHTML = `<thead><tr><th style="text-align:left">Player</th>
+    <th>Picked</th><th>Apps</th><th>Share</th></tr></thead><tbody>` +
+    rows.map(r => `<tr>
+      <td style="text-align:left">${r.name}</td>
+      <td class="pts">${r.with}</td>
+      <td class="dim">${r.g}</td>
+      <td><b>${Math.round(r.with / r.g * 100)}%</b></td></tr>`).join('') +
+    '</tbody>';
+  note.innerHTML = `The players a captain keeps for himself. <b>Picked</b> is how
+    many times a player ended up on the same team as whoever picked that night;
+    <b>Apps</b> is how many of those nights he played at all, so <b>Share</b> is the
+    rate he was kept rather than given away. Only the ${games.length} game${
+      games.length === 1 ? '' : 's'} where the captain played himself count &mdash;
+    with no side of his own, a captain who sat out cannot keep anyone. Ranked on
+    <b>Picked</b>, so a regular beats someone perfect from two games.`;
 })();
 
 /* ---- career appearances: horizontal bars ---- */

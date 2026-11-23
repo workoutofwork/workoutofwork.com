@@ -222,7 +222,7 @@ tr.worst td{background:var(--orange-wash)}
     <h2>Season <span id="curlabel"></span> record</h2>
     <div class="scroll"><table id="rec"></table></div>
     <details class="method"><summary>How this is calculated</summary>
-      <p class="note">Points are 3 for a win, 1 for a draw, 0 for a loss. Pts/Game is points divided by appearances &mdash; a fairer ranking than raw points, since players turn out a different number of times. Streak is the best run of wins this season across the games that player actually appeared in &mdash; weeks they missed are skipped rather than breaking the run, and a draw ends it. An asterisk means the run is still live, like a batsman not out. GD is the goal difference of the team the player was on. Everything here covers season 26-27 only; earlier seasons were never recorded match by match. Click any heading to sort.</p>
+      <p class="note">Points are 3 for a win, 1 for a draw, 0 for a loss. Pts/Game is points divided by appearances &mdash; a fairer ranking than raw points, since players turn out a different number of times. Streak is the best run of wins this season across the games that player actually appeared in &mdash; weeks they missed are skipped rather than breaking the run, and a draw ends it. An asterisk means the run is still live, like a batsman not out. GD is the goal difference of the team the player was on. The \u{1F986} column counts the times a player said they were in and then didn\u2019t play \u2014 a duck-out. Anyone with a duck is listed even if they never got on the pitch all season. Everything here covers season 26-27 only; earlier seasons were never recorded match by match. Click any heading to sort.</p>
     </details>
   </section>
 
@@ -370,6 +370,10 @@ P.forEach(p => {
 const other = k => k === 'whites' ? 'oranges' : 'whites';
 const MO = [...M].sort((a, b) => a.date.localeCompare(b.date));
 const MCUR = MO.filter(m => m.season === CUR && hasTeams(m));
+// ducked out: said they were in, then didn't play. Per-match from 26-27 on.
+const DUCKS = {};
+MCUR.forEach(m => (m.dropped_out || []).forEach(
+  n => DUCKS[n] = (DUCKS[n] || 0) + 1));
 P.forEach(p => {
   const r = { apps: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, whites: 0, oranges: 0,
               streak: 0, live: false };
@@ -921,7 +925,7 @@ function sortable(table, cols, rows, defKey, defAsc = false) {
     table.innerHTML =
       '<thead><tr>' + cols.map(c =>
         `<th data-k="${c.k}" class="${c.k === key ? 'on' : ''}"${c.txt ? ' style="text-align:left"' : ''}
-          title="Sort by ${c.h}">${c.h}<span class="arrow">${c.k === key ? (asc ? '▲' : '▼') : ''}</span></th>`
+          title="Sort by ${c.ttl || c.h}">${c.h}<span class="arrow">${c.k === key ? (asc ? '▲' : '▼') : ''}</span></th>`
       ).join('') + '</tr></thead><tbody>' +
       sorted.map(r => '<tr>' + cols.map(c => {
         const v = c.get(r), t = c.fmt ? c.fmt(v, r) : v;
@@ -940,7 +944,8 @@ function sortable(table, cols, rows, defKey, defAsc = false) {
 /* ---- current-season record ---- */
 (function () {
   document.getElementById('curlabel').textContent = CUR;
-  const rows = P.filter(p => p.rec.apps > 0);
+  // a player can have ducked out all season without once playing
+  const rows = P.filter(p => p.rec.apps > 0 || DUCKS[p.name]);
   const el = document.getElementById('rec');
   if (!rows.length) {
     el.outerHTML = '<p class="empty">No matches recorded yet.</p>'; return;
@@ -953,6 +958,9 @@ function sortable(table, cols, rows, defKey, defAsc = false) {
     { k: 'w',       h: 'W',       get: p => p.rec.w, cls: z },
     { k: 'd',       h: 'D',       get: p => p.rec.d, cls: z },
     { k: 'l',       h: 'L',       get: p => p.rec.l, cls: z },
+    { k: 'ducks',   h: '<span role="img" aria-label="Dropouts">\u{1F986}</span>',
+                    ttl: 'dropouts', get: p => DUCKS[p.name] || 0,
+                    fmt: v => v || '\u2013', cls: z },
     { k: 'winpc',   h: 'Win %',   get: p => p.rec.apps ? p.rec.w / p.rec.apps * 100 : 0,
                                   fmt: v => Math.round(v) + '%', cls: z },
     { k: 'streak',  h: 'Streak',  get: p => p.rec.streak, cls: z,

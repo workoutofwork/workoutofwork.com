@@ -341,7 +341,9 @@ tr.worst td{background:var(--orange-wash)}
   <section data-view="all">
     <h2>All players</h2>
     <div class="scroll"><table id="tbl"></table></div>
-    <p class="note">Click any heading to sort; click again to reverse.</p>
+    <p class="note">Click any heading to sort; click again to reverse. The figure
+    in brackets after <b>Last seen</b> is how many club games have gone by since
+    &mdash; no bracket means they were in the most recent line-up.</p>
   </section>
 
   <section data-view="both">
@@ -1180,7 +1182,10 @@ function sortable(table, cols, rows, defKey, defAsc = false) {
     { k: 'position', h: 'Pos', txt: 1, get: p => p.position, cls: () => 'dim' },
     { k: 'debut', h: 'Debut', txt: 1, get: p => p.debut, fmt: date, cls: () => 'dim' },
     { k: 'lastSeen', h: 'Last seen', ttl: 'last seen', txt: 1,
-      get: p => p.lastSeen || '', fmt: (v, p) => v ? date(v) : '&ndash;',
+      get: p => p.lastSeen || '',
+      // the bracket is club games missed since, so it keeps counting every
+      // Thursday they stay away. Nothing for anyone in the latest line-up.
+      fmt: (v, p) => v ? date(v) + (p.away ? ` (${p.away})` : '') : '&ndash;',
       cls: () => 'dim' },
     ...SEASONS.map(s => ({ k: s, h: s, get: p => p.byS[s],
       fmt: v => v || '–', cls: v => v ? (s === CUR ? 'now' : '') : 'dim' })),

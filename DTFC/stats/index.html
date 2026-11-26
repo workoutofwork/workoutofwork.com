@@ -232,7 +232,7 @@ tr.worst td{background:var(--orange-wash)}
     <div class="scroll"><table id="colours"></table></div>
     <p class="note" id="colnote"></p>
     <details class="method"><summary>How this is calculated</summary>
-      <p class="note">Teams are re-picked every week, so this tracks the shirts rather than any settled group of players. Points are 3 for a win, 1 for a draw. Games without a recorded score are left out.</p>
+      <p class="note">Teams are re-picked every week, so this tracks the shirts rather than any settled group of players. Points are 3 for a win, 1 for a draw. Win % is wins as a share of games played, counted the same way as the season record &mdash; a draw is not half a win, so the two percentages will not add up to 100 in a season with draws in it. Games without a recorded score are left out.</p>
     </details>
   </section>
 
@@ -544,11 +544,13 @@ const TILES = {
   }).sort((a, b) => b.pts - a.pts || b.gd - a.gd || b.gf - a.gf);
 
   el.innerHTML = `<thead><tr><th style="text-align:left">Team</th><th>P</th><th>W</th><th>D</th>
-    <th>L</th><th>GF</th><th>GA</th><th>GD</th><th data-k="pts">Pts</th></tr></thead><tbody>` +
+    <th>L</th><th>Win %</th><th>GF</th><th>GA</th><th>GD</th>
+    <th data-k="pts">Pts</th></tr></thead><tbody>` +
     rows.map(r => `<tr>
       <td style="text-align:left"><span class="chip ${r.k === 'whites' ? 'w' : 'o'}"></span>${r.name}</td>
       <td>${r.p}</td><td class="${r.w ? '' : 'dim'}">${r.w}</td>
       <td class="${r.d ? '' : 'dim'}">${r.d}</td><td class="${r.l ? '' : 'dim'}">${r.l}</td>
+      <td>${Math.round(r.w / r.p * 100)}%</td>
       <td class="dim">${r.gf}</td><td class="dim">${r.ga}</td>
       <td>${r.gd > 0 ? '+' + r.gd : r.gd}</td><td class="pts">${r.pts}</td></tr>`).join('') +
     '</tbody>';

@@ -505,10 +505,10 @@ const TILES = {
        ? `${(totalGoals / goalGames.length).toFixed(1)} per game`
        : 'no results recorded'],
     streakers.length === 1
-      ? ['Streaker', streakers[0].name,
+      ? ['Top streaker', streakers[0].name,
          `${bestStreak} win${bestStreak === 1 ? '' : 's'} in a row${
            streakers[0].rec.live ? ', still going' : ''}`]
-      : ['Streaker', streakers.length ? `${streakers.length} tied` : '—',
+      : ['Top streaker', streakers.length ? `${streakers.length} tied` : '—',
          streakers.length
            ? `${bestStreak} win${bestStreak === 1 ? '' : 's'} in a row`
            : 'no wins yet this season'],
